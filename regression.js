@@ -44,6 +44,7 @@ function setFormula() {
   switch (MODE) {
     case "POLY":
       // set coefficient as tf
+      // need tidy because of scalar. maybe..
       tf.tidy(() => {
         co_A = tf.scalar(Math.random()).variable();
         co_B = tf.scalar(Math.random()).variable();
@@ -109,7 +110,10 @@ function draw() {
   // draw regression graph
   drawGraph();
 
-  // console.log(tf.memory());
+  if (tf.memory().numTensors > 20) {
+    console.log("WARNING");
+    console.log(tf.memory());
+  }
   requestAnimationFrame(draw);
 }
 

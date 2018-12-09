@@ -4,12 +4,19 @@ const ctx = canvas.getContext("2d");
 const x_vals = [];
 const y_vals = [];
 
+let co_A, co_B;
+
 function setup() {
+  // add onClick event
   canvas.addEventListener("click", e => {
     let { x, y } = getMousePosition(e);
     x_vals.push(x);
     y_vals.push(y);
   });
+
+  // set coefficient as tf
+  co_A = tf.variable(tf.scalar(Math.random()));
+  co_B = tf.variable(tf.scalar(Math.random()));
 }
 
 function draw() {

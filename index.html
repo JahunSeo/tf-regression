@@ -3,12 +3,16 @@
   <head>
     <style>
       .container {
-        width: 100%;
         display: flex;
+        flex-direction: column;
         justify-content: center;
+        align-items: center;
       }
       #canvas {
         background-color: black;
+      }
+      .btn_container {
+        margin-top: 30px;
       }
     </style>
     <!-- Load TensorFlow.js -->
@@ -17,6 +21,12 @@
   <body>
     <div class="container">
       <canvas id="canvas" width="400" height="400"></canvas>
+
+      <div class="btn_container">
+        <p>current Mode: <span id="modeText"></span></p>
+        <button id="linear_btn">linear</button>
+        <button id="poly_btn">poly</button>
+      </div>
     </div>
 
     <script src="regression.js"></script>

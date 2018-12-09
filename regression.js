@@ -1,11 +1,15 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const modeText = document.getElementById("modeText");
+const linearBtn = document.getElementById("linear_btn");
+const polyBtn = document.getElementById("poly_btn");
 
 const x_vals = [];
 const y_vals = [];
 const x_norms = [];
 const y_norms = [];
 
+let MODE = "LINEAR";
 let co_A, co_B, co_C;
 let predict;
 let loss;
@@ -20,31 +24,70 @@ function setup() {
     y_vals.push(y);
     x_norms.push(x_norm);
     y_norms.push(y_norm);
-    console.log(x, y, x_norm, y_norm);
   });
+  linearBtn.addEventListener("click", () => {
+    MODE = "LINEAR";
+    tf.dispose([co_A, co_B, co_C, optimizer]);
+    setFormula();
+  });
+  polyBtn.addEventListener("click", () => {
+    MODE = "POLY";
+    tf.dispose([co_A, co_B, co_C, optimizer]);
+    setFormula();
+  });
+  // set fomula
+  setFormula();
+}
 
-  // set coefficient as tf
-  co_A = tf.scalar(Math.random()).variable();
-  co_B = tf.scalar(Math.random()).variable();
-  co_C = tf.scalar(Math.random()).variable();
-  // set predict & loss function
-  // y = a*x^2 + b*x + c
-  predict = xs =>
-    co_A
-      .mul(xs.square())
-      .add(co_B.mul(xs))
-      .add(co_C);
-  // y = a*x + b
-  predict = xs => co_A.mul(xs).add(co_B);
-
-  loss = (pred, label) =>
-    pred
-      .sub(label)
-      .square()
-      .mean();
-  // set optimizer & learning rate
-  learningRate = 0.2;
-  optimizer = tf.train.sgd(learningRate);
+function setFormula() {
+  modeText.innerText = MODE;
+  switch (MODE) {
+    case "POLY":
+      // set coefficient as tf
+      tf.tidy(() => {
+        co_A = tf.scalar(Math.random()).variable();
+        co_B = tf.scalar(Math.random()).variable();
+        co_C = tf.scalar(Math.random()).variable();
+      });
+      // set predict function
+      // y = a*x^2 + b*x + c
+      predict = xs =>
+        co_A
+          .mul(xs.square())
+          .add(co_B.mul(xs))
+          .add(co_C);
+      // set loss function
+      loss = (pred, label) =>
+        pred
+          .sub(label)
+          .square()
+          .mean();
+      // set optimizer & learning rate
+      learningRate = 0.5;
+      optimizer = tf.train.adam(learningRate);
+      break;
+    case "LINEAR":
+    default:
+      // set coefficient as tf
+      tf.tidy(() => {
+        co_A = tf.scalar(Math.random()).variable();
+        co_B = tf.scalar(Math.random()).variable();
+      });
+      // set predict function
+      // y = a*x + b
+      predict = xs => co_A.mul(xs).add(co_B);
+      // set loss function
+      loss = (pred, label) =>
+        pred
+          .sub(label)
+          .square()
+          .mean();
+      // set optimizer & learning rate
+      learningRate = 0.5;
+      optimizer = tf.train.sgd(learningRate);
+      break;
+  }
+  console.log(tf.memory());
 }
 
 function draw() {
@@ -58,33 +101,24 @@ function draw() {
     return;
   }
   // train the regression
-  tf.tidy(() => {
-    train({ x_norms, y_norms, predict, loss, optimizer });
-  });
+  train({ x_norms, y_norms, predict, loss, optimizer });
   // draw Dots
   for (let i = 0; i < x_vals.length; i++) {
     drawDot(x_vals[i], y_vals[i]);
   }
   // draw regression graph
-  tf.tidy(() => {
-    let lineX = [0, 1];
-    let lineY = predict(tf.tensor1d(lineX)).dataSync();
-    drawLine(
-      lineX[0] * canvas.width,
-      lineY[0] * canvas.height,
-      lineX[1] * canvas.width,
-      lineY[1] * canvas.height
-    );
-  });
+  drawGraph();
 
-  console.log(tf.memory());
+  // console.log(tf.memory());
   requestAnimationFrame(draw);
 }
 
 function train({ x_norms, y_norms, predict, loss, optimizer } = {}) {
-  let xs = tf.tensor1d(x_norms);
-  let ys = tf.tensor1d(y_norms);
-  optimizer.minimize(() => loss(predict(xs), ys));
+  tf.tidy(() => {
+    let xs = tf.tensor1d(x_norms);
+    let ys = tf.tensor1d(y_norms);
+    optimizer.minimize(() => loss(predict(xs), ys));
+  });
 }
 
 function getMousePosition(e) {
@@ -110,10 +144,38 @@ function drawDot(x, y) {
   ctx.stroke();
 }
 
-function drawLine(x1, y1, x2, y2) {
+function drawGraph() {
+  let lineX = [];
+  let lineY;
+  let segmentCnt;
+  tf.tidy(() => {
+    switch (MODE) {
+      case "POLY":
+        segmentCnt = 20;
+        break;
+      case "LINEAR":
+      default:
+        segmentCnt = 1;
+        break;
+    }
+    for (let i = 0; i <= segmentCnt; i++) {
+      lineX.push(i / segmentCnt);
+    }
+
+    lineY = predict(tf.tensor1d(lineX)).dataSync();
+  });
+
+  connectDots(lineX, lineY);
+}
+
+function connectDots(lineX, lineY) {
+  let w = canvas.width;
+  let h = canvas.height;
   ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
+  ctx.moveTo(lineX[0] * w, lineY[0] * h);
+  for (let i = 1; i < lineX.length; i++) {
+    ctx.lineTo(lineX[i] * w, lineY[i] * h);
+  }
   ctx.lineWidth = "1";
   ctx.strokeStyle = "white";
   ctx.stroke();

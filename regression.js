@@ -27,7 +27,6 @@ function setup() {
   co_A = tf.scalar(Math.random()).variable();
   co_B = tf.scalar(Math.random()).variable();
   co_C = tf.scalar(Math.random()).variable();
-  console.log(co_A.print());
   // set predict & loss function
   // y = a*x^2 + b*x + c
   predict = xs =>
@@ -35,28 +34,50 @@ function setup() {
       .mul(xs.square())
       .add(co_B.mul(xs))
       .add(co_C);
+  // y = a*x + b
+  predict = xs => co_A.mul(xs).add(co_B);
+
   loss = (pred, label) =>
     pred
       .sub(label)
       .square()
       .mean();
   // set optimizer & learning rate
-  learningRate = 0.01;
+  learningRate = 0.2;
   optimizer = tf.train.sgd(learningRate);
 }
 
 function draw() {
+  // draw background
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
   // do nothing when there is no dots to calculate
   if (x_vals.length < 1) {
     requestAnimationFrame(draw);
     return;
   }
   // train the regression
-  train({ x_norms, y_norms, predict, loss, optimizer });
+  tf.tidy(() => {
+    train({ x_norms, y_norms, predict, loss, optimizer });
+  });
   // draw Dots
   for (let i = 0; i < x_vals.length; i++) {
     drawDot(x_vals[i], y_vals[i]);
   }
+  // draw regression graph
+  tf.tidy(() => {
+    let lineX = [0, 1];
+    let lineY = predict(tf.tensor1d(lineX)).dataSync();
+    drawLine(
+      lineX[0] * canvas.width,
+      lineY[0] * canvas.height,
+      lineX[1] * canvas.width,
+      lineY[1] * canvas.height
+    );
+  });
+
+  console.log(tf.memory());
   requestAnimationFrame(draw);
 }
 
@@ -85,6 +106,16 @@ function drawDot(x, y) {
   ctx.arc(x, y, 5, 0, 2 * Math.PI);
   ctx.fillStyle = "white";
   ctx.fill();
+  ctx.closePath();
+  ctx.stroke();
+}
+
+function drawLine(x1, y1, x2, y2) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineWidth = "1";
+  ctx.strokeStyle = "white";
   ctx.stroke();
 }
 
